@@ -10,6 +10,13 @@ import urllib.parse
 import urllib.request
 
 
+MONTHS = dict(zip(
+    ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"),
+    ("January", "February", "March", "April", "May", "June", "July", "August", "September",
+     "October", "November", "December"),
+))
+
+
 def _value(text, pos):
     """Read one balanced braced, quoted, or numeric BibTeX value."""
     start = pos
@@ -19,6 +26,9 @@ def _value(text, pos):
     if opener not in '{"':
         match = re.match(r"\d+", text[pos:])
         if not match:
+            macro = re.match(r"[A-Za-z]+", text[pos:])
+            if macro and macro.group().lower() in MONTHS:
+                return MONTHS[macro.group().lower()], pos + macro.end()
             raise ValueError("Unsupported BibTeX string macro or malformed value")
         return match.group(), pos + len(match.group())
     depth = 1 if opener == "{" else 0

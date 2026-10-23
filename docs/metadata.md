@@ -6,7 +6,7 @@ title; HTML/error responses fall through to the next provider. If both fail,
 the exception includes the provider names and error details.
 
 The metadata parser supports nested braces, quoted strings, escaped characters,
-numeric values, and concatenation of literal values. It preserves the original
+numeric values, standard month macros, and concatenation of literal values. It preserves the original
 BibTeX response for bibliography output. It rejects malformed entries, multiple
 entries, and external string macros rather than guessing their meanings. It is
 intended for individual API responses, not arbitrary user-authored .bib files.
