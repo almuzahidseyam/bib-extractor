@@ -110,10 +110,9 @@ def generate_citation(bib_data: Dict[str, str], style: str = "apa") -> str:
     
     return citation
 
-def sanitize_filename(filename):
-    from bib_extractor.workflow import sanitize_filename as sanitize
-    return sanitize(filename)
-
+def sanitize_filename(filename: str) -> str:
+    """Remove characters that are invalid in filenames."""
+    return re.sub(r'[/\\:*?"<>|]', "", filename)
 
 def rename_paper(old_path, bib_data, dry_run=False):
     from bib_extractor.workflow import rename_paper as rename
