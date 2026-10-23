@@ -34,7 +34,7 @@ def fetch_bibtex(doi: str, timeout: int = 10) -> str:
     raise Exception(f"Failed to fetch BibTeX for {doi} from all available APIs.")
 
 def parse_bibtex(bib: str) -> Dict[str, str]:
-    """Simple regexâ€‘based parser to extract key fields from a BibTeX entry."""
+    """Simple regex‑based parser to extract key fields from a BibTeX entry."""
     data = {}
     # Fields to extract
     fields = ["title", "year", "author", "journal", "volume", "number", "pages", "publisher"]
