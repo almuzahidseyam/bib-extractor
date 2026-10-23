@@ -9,17 +9,19 @@ A tiny, **pip‑installable** Python utility that scans a folder of PDF papers, 
 
 ## ✨ Features
 - Works on any folder of PDFs.
-- **Pure Python**: No external tools like Poppler or `pdftotext` required.
+- **Pure Python**: Uses the `pypdf` package, installed automatically by pip. No Poppler or `pdftotext` required.
 - Detects DOI strings with a robust regular expression.
 - **Multiple API Support**: Queries `doi.org` and falls back to **Crossref** for metadata.
 - **Auto-Rename**: Automatically renames PDFs to `Year - Author - Title.pdf`.
-- **Formatted Citations**: Generates **APA/MLA/IEEE** style reference lists in a separate text file.
+- **Simple Citations**: Generates plain-text APA/MLA/IEEE-style reference lists; check them against your required style guide.
 - **Visual Progress**: Includes a terminal progress bar for high‑volume processing.
 
 ---
 
 ## 📦 Installation
 ### From PyPI (recommended)
+Requires Python 3.8 or newer. Metadata retrieval requires internet access.
+
 ```bash
 pip install bib-extractor
 ```
@@ -27,13 +29,13 @@ pip install bib-extractor
 ### From source
 1. **Clone the repository**
 ```bash
-git clone https://github.com/msrtarit/bib_extractor.git
-cd bib_extractor
+git clone https://github.com/msrtarit/bib-extractor.git
+cd bib-extractor
 ```
 2. (Optional) Create a virtual environment and install the package in editable mode:
 ```bash
 python -m venv .venv
-.venv\\Scripts\\activate   # Windows
+.venv\Scripts\Activate.ps1  # Windows PowerShell
 # or source .venv/bin/activate on Unix
 pip install -e .
 ```
@@ -44,6 +46,11 @@ pip install -e .
 
 ### 1. Extract DOIs / Titles
 This step scans your PDFs and creates a metadata JSON.
+
+The extractor reads up to the first two pages of each PDF. It does not perform
+OCR. If no DOI is found, the JSON retains a title candidate for manual lookup;
+the fetch command currently needs a DOI and does not search by title. Verify
+and add the DOI to that record before fetching it.
 
 **Standard Command:**
 ```bash
@@ -73,16 +80,24 @@ python -m bib_extractor.fetch_bibtex --input paper_info.json --output papers.bib
 
 > [!TIP]
 > **Windows Users**: If the short commands (`bib-extractor`) don't work, ensure your Python `Scripts` folder is added to your system environment variables. Alternatively, always use the `python -m` method shown above.
-### 🛠️ Options & Arguments
+### 🛠️ Extraction options (`bib-extractor`)
 
 | Flag | Description | Default |
 | :--- | :--- | :--- |
-| `--dir` | Directory containing PDF files (or where to rename) | Current Dir |
-| `--output` | Path to save the BibTeX `.bib` file | `paper_info.json` |
-| `--input` | The JSON metadata file from Step 1 | *Required for Step 2* |
+| `--dir` | Directory containing PDF files | Current directory |
+| `--output` | Path to save extracted JSON metadata | `paper_info.json` |
+
+### Fetch options (`bib-fetch`)
+
+| Flag | Description | Default |
+| :--- | :--- | :--- |
+| `--input` | JSON metadata file from step 1 | `paper_info.json` |
+| `--output` | Path to save the BibTeX bibliography | `papers.bib` |
+| `--dir` | Directory of original PDFs; required with `--rename` | Unset |
 | `--citations` | Output file for a formatted reference list (e.g. `refs.txt`) | Optional |
 | `--style` | Citation style for the reference list (`apa`, `mla`, or `ieee`) | `apa` |
 | `--rename` | Automatically rename PDFs to `Year - Author - Title.pdf` | Optional |
+| `--delay` | Delay in seconds between processing papers | `1.0` |
 
 ---
 

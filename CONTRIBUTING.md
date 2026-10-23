@@ -7,8 +7,8 @@ Thank you for considering contributing to **Bib Extractor**! 🎉
 1. **Fork the repository** on GitHub.
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/msrtarit/bib_extractor.git
-   cd bib_extractor
+   git clone https://github.com/YOUR_USERNAME/bib-extractor.git
+   cd bib-extractor
    ```
 3. **Create a new branch** for your change:
    ```bash
@@ -17,8 +17,11 @@ Thank you for considering contributing to **Bib Extractor**! 🎉
 
 ## Development Setup
 
-- The project uses only the Python standard library, so no extra packages are required.
-- You do need **Poppler** (`pdftotext`) installed on your system to run the extractor. See the README for installation instructions.
+- Use Python 3.8 or newer and create a virtual environment with `python -m venv .venv`.
+- Activate it using `.venv\Scripts\Activate.ps1` in Windows PowerShell or `source .venv/bin/activate` on Unix.
+- Run `python -m pip install -e .` to install the project and its `pypdf` dependency.
+- Install development tools with `python -m pip install flake8 build twine`.
+- Poppler and `pdftotext` are not required. Live metadata retrieval needs internet access.
 
 ## Code Style & Linting
 
@@ -27,17 +30,27 @@ Thank you for considering contributing to **Bib Extractor**! 🎉
   - Max complexity: **10**
 - Run lint locally before committing:
   ```bash
-  flake8 .
+  python -m flake8 src tests --max-line-length=127
   ```
 
 ## Testing
 
-There are currently no automated tests, but you can manually verify the workflow:
-1. Run the extractor on a sample folder of PDFs.
-2. Run `fetch_bibtex.py` to generate a `.bib` file.
-3. Ensure the output JSON and BibTeX files look correct.
+Run the standard-library test suite and verify distribution metadata:
 
-If you add tests in the future, place them in a `tests/` directory and configure a test runner (e.g., `pytest`).
+```bash
+python -m unittest discover -s tests -v
+python -m build
+python -m twine check dist/*
+```
+
+Place regression tests in `tests/test_*.py`. Tests must use temporary files and
+mock API requests so that CI does not depend on network availability or modify
+real research papers. CI runs tests on Linux and Windows with Python 3.8, 3.12,
+and 3.14, and builds both the wheel and source distribution.
+
+For a manual end-to-end check, use copies of a small PDF collection, run both
+commands, and inspect the JSON and BibTeX. Keep copyrighted papers and generated
+bibliographies out of the repository.
 
 ## Submitting a Pull Request
 
@@ -48,7 +61,7 @@ If you add tests in the future, place them in a `tests/` directory and configure
    ```
 3. Open a **Pull Request** against the `main` branch of the original repository.
 4. Fill out the PR template (if present) and describe the changes.
-5. The CI workflow will automatically run linting. Make sure it passes before merging.
+5. CI runs syntax/undefined-name checks, tests, and distribution validation. Make sure it passes before merging.
 
 ## Reporting Issues
 
