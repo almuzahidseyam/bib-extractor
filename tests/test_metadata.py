@@ -21,6 +21,11 @@ class ParsingTests(unittest.TestCase):
         self.assertIn(r'\"quoted\"', data["title"])
         self.assertIn(r'\{literal\}', data["title"])
 
+    def test_provider_month_macros(self):
+        data = parse_bibtex('@article{Aspelmeyer_2009,title={Measured measurement},year={2009},month=Jan}')
+        self.assertEqual(data["month"], "January")
+        self.assertEqual(data["title"], "Measured measurement")
+
     def test_malformed_responses_are_not_accepted(self):
         for bib in ["<html>error</html>", "", "@article{x,title={broken}",
                     "@article{x,title=macro}", "@article{x,title={a} year=2026}",
