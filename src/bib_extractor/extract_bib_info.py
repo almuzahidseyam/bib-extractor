@@ -1,90 +1,112 @@
+import argparse
+import json
 import os
 import re
-import json
-import argparse
+import sys
+import tempfile
 from pathlib import Path
+
 from pypdf import PdfReader
+
+
+DOI_PATTERN = re.compile(
+    r"10\.\s*(?:\d\s*){4,9}/\s*[-._;()/:A-Z0-9<>+&%?=#]+",
+    re.IGNORECASE,
+)
+
 
 def get_num(s: str) -> int:
     """Extract leading number from filename for sorting."""
-    m = re.match(r"(\d+)", s)
-    return int(m.group(1)) if m else 999
+    match = re.match(r"(\d+)", s)
+    return int(match.group(1)) if match else 999
+
+
+def find_doi(text: str):
+    """Find a DOI, preserving suffix punctuation and balanced parentheses."""
+    text = text.replace("\u200b", "").replace("\u00ad", "")
+    # Join only after a separator: an ordinary next line may be body text.
+    text = re.sub(r"(?<=[/_-])\r?\n[ \t]*(?=[A-Za-z0-9])", "", text)
+    text = re.sub(r"(?<=\.)\r?\n[ \t]*(?=[0-9])", "", text)
+    match = DOI_PATTERN.search(text)
+    if not match:
+        return None
+    doi = re.sub(r"\s+", "", match.group())
+    doi = doi.rstrip(".,;:")
+    while doi.endswith(")") and doi.count(")") > doi.count("("):
+        doi = doi[:-1].rstrip(".,;:")
+    return doi
+
 
 def extract_papers(dir_path: Path) -> list:
-    """Iterate over PDF files, extract DOI or title, and return list of dicts."""
-    files = [f for f in os.listdir(dir_path) if f.lower().endswith('.pdf')]
-    files.sort(key=get_num)
-    
-    # Robust DOI pattern: 
-    # 1. Matches "10."
-    # 2. Allows any combination of digits and spaces for the prefix (to handle "1 109")
-    # 3. Matches "/"
-    # 4. Matches the suffix, allowing internal periods/dashes but stopping at typical non-DOI boundaries
-    # We will clean the result after matching.
-    doi_pattern = re.compile(r"10\.\s*[0-9\s]{4,15}/\s*[a-zA-Z0-9._\-/()]+")
-    
+    """Read metadata and the first two pages of each PDF in a directory."""
+    if not dir_path.is_dir():
+        raise NotADirectoryError("PDF directory does not exist or is not a directory: {}".format(dir_path))
+    files = sorted(
+        (path for path in dir_path.iterdir() if path.is_file() and path.suffix.lower() == ".pdf"),
+        key=lambda path: (get_num(path.name), path.name.lower(), path.name),
+    )
     results = []
-    for filename in files:
-        full_path = dir_path / filename
-        print(f"Processing {filename}...")
+    for path in files:
+        print("Processing {}...".format(path.name))
         try:
-            reader = PdfReader(str(full_path))
-            content = ""
-            for i in range(min(2, len(reader.pages))):
-                content += reader.pages[i].extract_text() + "\n"
-                
-            match = doi_pattern.search(content)
-            if match:
-                # Clean: remove ALL whitespace from the match
-                doi = re.sub(r"\s+", "", match.group(0))
-                # Discard trailing dots or punctuation
-                doi = re.sub(r"[^a-zA-Z0-9)]+$", "", doi)
-                
-                results.append({'file': filename, 'doi': doi})
-                print(f"  Found DOI: {doi}")
-            else:
-                # Secondary attempt: strip ONLY newlines and search again
-                # Sometimes a DOI is split by a newline
-                flat_content = content.replace("\n", " ").replace("\r", " ")
-                match = doi_pattern.search(flat_content)
-                if match:
-                    doi = re.sub(r"\s+", "", match.group(0))
-                    doi = re.sub(r"[^a-zA-Z0-9)]+$", "", doi)
-                    results.append({'file': filename, 'doi': doi})
-                    print(f"  Found DOI (post-clean): {doi}")
+            with path.open("rb") as stream:
+                reader = PdfReader(stream)
+                metadata = reader.metadata or {}
+                metadata_doi = None
+                for key in ("/doi", "/DOI", "/Subject", "/Keywords"):
+                    metadata_doi = find_doi(str(metadata.get(key) or ""))
+                    if metadata_doi:
+                        break
+                content = ""
+                if not metadata_doi:
+                    content = "\n".join(
+                        reader.pages[i].extract_text() or ""
+                        for i in range(min(2, len(reader.pages)))
+                    )
+                doi = metadata_doi or find_doi(content)
+                if doi:
+                    results.append({"file": path.name, "doi": doi})
+                    print("  Found DOI: {}".format(doi))
                 else:
-                    # Fallback: title extraction
-                    lines = [l.strip() for l in content.split('\n') if l.strip()]
-                    title = " ".join(lines[:3]) if lines else "Unknown"
-                    results.append({'file': filename, 'title': title})
-                    print(f"  No DOI found. Title candidate: {title[:50]}...")
-        except Exception as e:
-            results.append({'file': filename, 'error': str(e)})
-            print(f"  Error: {e}")
+                    title = str(metadata.get("/Title") or "").strip()
+                    lines = [line.strip() for line in content.splitlines() if line.strip()]
+                    title = title or " ".join(lines[:3]) or "Unknown"
+                    results.append({"file": path.name, "title": title})
+                    print("  No DOI found. Title candidate: {}...".format(title[:50]))
+        except Exception as exc:
+            # Keep the other results if one PDF is unreadable or encrypted.
+            results.append({"file": path.name, "error": str(exc)})
+            print("  Error: {}".format(exc), file=sys.stderr)
     return results
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Extract DOIs or titles from PDF papers in a folder.'
-    )
-    parser.add_argument(
-        '--dir',
-        type=Path,
-        default=Path.cwd(),
-        help='Directory containing PDF files (default: current working directory)'
-    )
-    parser.add_argument(
-        '--output',
-        type=Path,
-        default=Path('paper_info.json'),
-        help='Path to write the JSON output (default: paper_info.json)'
-    )
-    args = parser.parse_args()
-    results = extract_papers(args.dir)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.output, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2)
-    print(f"Done! Saved results to {args.output}")
 
-if __name__ == '__main__':
-    main()
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Extract DOIs or titles from PDF papers in a folder.")
+    parser.add_argument("--dir", type=Path, default=Path.cwd(), help="Directory containing PDF files.")
+    parser.add_argument("--output", type=Path, default=Path("paper_info.json"), help="Path to write the JSON output.")
+    args = parser.parse_args(argv)
+    try:
+        results = extract_papers(args.dir)
+        source_paths = {path.resolve() for path in args.dir.iterdir() if path.suffix.lower() == ".pdf"}
+        if args.output.resolve() in source_paths:
+            raise ValueError("JSON output must not overwrite a source PDF.")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=args.output.parent,
+                                             delete=False) as output:
+                temporary = Path(output.name)
+                json.dump(results, output, indent=2, ensure_ascii=False)
+            os.replace(str(temporary), str(args.output))
+        finally:
+            if temporary is not None and temporary.exists():
+                temporary.unlink()
+    except (OSError, ValueError) as exc:
+        print("[ERROR] {}".format(exc), file=sys.stderr)
+        return 1
+    print("Done! Saved results to {}".format(args.output))
+    return 1 if any("error" in paper for paper in results) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
