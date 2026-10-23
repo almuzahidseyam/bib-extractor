@@ -1,17 +1,16 @@
-import re
+import argparse
 import json
+import time
 import urllib.request
+import re
 import sys
 from pathlib import Path
 from typing import List, Dict, Any
 
-from bib_extractor.workflow import validate_papers, run
-from bib_extractor.workflow import sanitize_filename as sanitize_filename
-from bib_extractor.workflow import rename_paper as rename_paper
-from bib_extractor.workflow import print_progress_bar as print_progress_bar
-
 def load_papers(json_path: Path) -> List[Dict[str, Any]]:
     """Load the JSON file produced by ``extract_bib_info.py``."""
+    from bib_extractor.workflow import validate_papers
+
     if not json_path.is_file():
         raise FileNotFoundError(f"Input file not found: {json_path}")
     with json_path.open(encoding="utf-8") as f:
@@ -35,7 +34,7 @@ def fetch_bibtex(doi: str, timeout: int = 10) -> str:
     raise Exception(f"Failed to fetch BibTeX for {doi} from all available APIs.")
 
 def parse_bibtex(bib: str) -> Dict[str, str]:
-    """Simple regex‑based parser to extract key fields from a BibTeX entry."""
+    """Simple regexâ€‘based parser to extract key fields from a BibTeX entry."""
     data = {}
     # Fields to extract
     fields = ["title", "year", "author", "journal", "volume", "number", "pages", "publisher"]
@@ -111,7 +110,23 @@ def generate_citation(bib_data: Dict[str, str], style: str = "apa") -> str:
     
     return citation
 
+def sanitize_filename(filename):
+    from bib_extractor.workflow import sanitize_filename as sanitize
+    return sanitize(filename)
+
+
+def rename_paper(old_path, bib_data, dry_run=False):
+    from bib_extractor.workflow import rename_paper as rename
+    return rename(old_path, bib_data, dry_run=dry_run)
+
+
+def print_progress_bar(*args, **kwargs):
+    from bib_extractor.workflow import print_progress_bar as progress
+    return progress(*args, **kwargs)
+
+
 def main(argv=None):
+    from bib_extractor.workflow import run
     return run(argv, load_papers, fetch_bibtex, parse_bibtex, generate_citation)
 
 

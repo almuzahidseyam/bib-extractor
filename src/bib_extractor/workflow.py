@@ -172,7 +172,8 @@ def _process(args, papers, fetch_bibtex, parse_bibtex, generate_citation):
     entries, citations, results, renames = [], [], [], []
     cache, used_keys = {}, set()
     attempts = 0
-    for paper in papers:
+    for index, paper in enumerate(papers, 1):
+        print("[PROCESS] {}/{}: {}".format(index, len(papers), paper["file"]))
         record = {"file": paper["file"], "status": "success"}
         results.append(record)
         doi = (paper.get("doi") or "").strip()
