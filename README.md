@@ -14,7 +14,7 @@ A tiny, **pip‑installable** Python utility that scans a folder of PDF papers, 
 - **Multiple API Support**: Queries `doi.org` and falls back to **Crossref** for metadata.
 - **Auto-Rename**: Automatically renames PDFs to `Year - Author - Title.pdf`.
 - **Simple Citations**: Generates plain-text APA/MLA/IEEE-style reference lists; check them against your required style guide.
-- **Visual Progress**: Includes a terminal progress bar for high‑volume processing.
+- **Visual Progress**: Includes per-file progress indicators for high-volume processing.
 
 ---
 
